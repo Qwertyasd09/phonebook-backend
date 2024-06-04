@@ -18,7 +18,7 @@ app.get('/api/persons', (req, res) => {
   })
 })
 
-app.post('/api/persons', (req, res) => {
+app.post('/api/persons', (req, res, next) => {
   const body = req.body
   if (!body.name || !body.number) {
     return res.status(400).json({
@@ -32,9 +32,10 @@ app.post('/api/persons', (req, res) => {
   person.save().then(savedPerson => {
     res.json(savedPerson)
   })
+  .catch(error => next(error))
 })
 
-app.put('/api/persons/:id', (req, res)  => {
+app.put('/api/persons/:id', (req, res, next)  => {
   PersonPhonebook.findOneAndUpdate(
     { name: req.body.name }, 
     { number: req.body.number }, 
@@ -63,8 +64,6 @@ app.delete('/api/persons/:id', (req, res, next) => {
     .catch(error => next(error))
 })
 
-
-
 const unknownEndpoint = (request, response) => {
   response.status(404).send({ error: 'unknown endpoint' })
 }
@@ -72,14 +71,14 @@ const unknownEndpoint = (request, response) => {
 app.use(unknownEndpoint)
 
 const errorHandler = (error, request, response, next) => {
-  console.error(error.message)
-
   if (error.name === 'CastError') {
     return response.status(400).send({ error: 'malformatted id' })
-  } 
-
+  } else if ((error.name === 'ValidationError') || (error.number === 'ValidationError')) {
+    return response.status(400).json({ error: error.message })
+  }
   next(error)
 }
+
 app.use(errorHandler)
 
 app.listen(PORT, () => {
